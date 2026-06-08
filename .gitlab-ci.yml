@@ -1,0 +1,77 @@
+stages:
+  - frontend
+  - backend
+  - deploy
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+
+frontend_install:
+  stage: frontend
+  image: node:22-alpine
+  script:
+    - cd frontend
+    - npm install
+  cache:
+    key: frontend-${CI_COMMIT_REF_SLUG}
+    paths:
+      - frontend/node_modules/
+
+frontend_build:
+  stage: frontend
+  image: node:22-alpine
+  needs: ["frontend_install"]
+  script:
+    - cd frontend
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist
+
+backend_install:
+  stage: backend
+  image: node:22-alpine
+  script:
+    - cd backend
+    - npm install
+  cache:
+    key: backend-${CI_COMMIT_REF_SLUG}
+    paths:
+      - backend/node_modules/
+
+backend_test:
+  stage: backend
+  image: node:22-alpine
+  needs: ["backend_install"]
+  script:
+    - cd backend
+    - npm install
+    - npm test
+
+backend_build:
+  stage: backend
+  image: node:22-alpine
+  needs: ["backend_install"]
+  script:
+    - cd backend
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - backend/dist
+
+deploy_local:
+  stage: deploy
+  needs:
+    - frontend_build
+    - backend_test
+    - backend_build
+  script:
+    - docker compose down
+    - if ($LASTEXITCODE -ne 0) { Write-Host "Nothing to stop"; $global:LASTEXITCODE = 0 }
+    - docker compose up -d --build
+  only:
+    - main
+  tags:
+    - local-docker
