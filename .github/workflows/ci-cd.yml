@@ -1,0 +1,95 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  frontend_build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  backend_test:
+    name: Backend Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Run backend unit tests
+        working-directory: backend
+        run: npm run test
+
+  backend_build:
+    name: Backend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
+  deploy_local:
+    name: Deploy To Local Docker
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+    needs:
+      - frontend_build
+      - backend_test
+      - backend_build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Stop current containers
+        shell: powershell
+        run: |
+          docker compose down
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Nothing to stop"
+            $global:LASTEXITCODE = 0
+          }
+
+      - name: Build and start containers
+        shell: powershell
+        run: docker compose up -d --build
