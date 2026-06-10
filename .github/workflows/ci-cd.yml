@@ -82,14 +82,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Stop current containers
-        shell: powershell
-        run: |
-          docker compose down
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Nothing to stop"
-            $global:LASTEXITCODE = 0
-          }
+        shell: cmd
+        run: docker compose down || echo Nothing to stop
 
       - name: Build and start containers
-        shell: powershell
+        shell: cmd
         run: docker compose up -d --build
